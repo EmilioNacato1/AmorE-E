@@ -13,7 +13,7 @@ app.use('/uploads', express.static('uploads'));
 // Ruta para obtener las salidas
 app.get('/api/salidas', async (req, res) => {
     try {
-        const uploadsDir = path.join(__dirname, 'uploads');
+        const uploadsDir = path.join(__dirname, 'public', 'uploads');
         const carpetas = await fs.readdir(uploadsDir);
         
         const salidas = await Promise.all(carpetas.map(async (carpeta) => {
