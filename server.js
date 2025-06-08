@@ -1,45 +1,45 @@
 const express = require('express');
 const path = require('path');
-const fs = require('fs').promises;
-
+const fs = require('fs');
 const app = express();
 
-// Servir archivos estáticos desde la carpeta public
-app.use(express.static('public'));
+app.use(express.static(path.join(__dirname, 'public')));
 
-// Servir archivos estáticos desde la carpeta uploads
-app.use('/uploads', express.static('uploads'));
+// Servir la carpeta 'uploads' como estática
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Ruta para obtener las salidas
-app.get('/api/salidas', async (req, res) => {
-    try {
-        const uploadsDir = path.join(__dirname, 'public', 'uploads');
-        const carpetas = await fs.readdir(uploadsDir);
-        
-        const salidas = await Promise.all(carpetas.map(async (carpeta) => {
-            const carpetaPath = path.join(uploadsDir, carpeta);
-            const archivos = await fs.readdir(carpetaPath);
-            
+// Configurar middleware para parsear JSON
+app.use(express.json());
+
+// Ruta para obtener las carpetas y archivos dentro de uploads
+app.get('/api/salidas', (req, res) => {
+    fs.readdir('uploads', (err, folders) => {
+        if (err) {
+            return res.status(500).json({ error: 'No se pueden leer las carpetas' });
+        }
+
+        const carpetas = folders.filter(folder => fs.lstatSync(path.join('uploads', folder)).isDirectory());
+        const salidaArchivos = carpetas.map(carpeta => {
+            const archivos = fs.readdirSync(path.join('uploads', carpeta))
+                .filter(file => /\.(jpg|jpeg|png|gif|mp4)$/i.test(file))
+                .map(archivo => path.join('/uploads', carpeta, archivo));
+
             return {
                 nombre: carpeta,
-                archivos: archivos.map(archivo => `/uploads/${carpeta}/${archivo}`)
+                archivos: archivos
             };
-        }));
+        });
 
-        res.json(salidas);
-    } catch (error) {
-        console.error('Error al leer las salidas:', error);
-        res.status(500).json({ error: 'Error al leer las salidas' });
-    }
+        res.json(salidaArchivos);
+    });
 });
 
-// Para desarrollo local
-if (process.env.NODE_ENV !== 'production') {
-    const PORT = process.env.PORT || 3000;
-    app.listen(PORT, () => {
-        console.log(`Servidor corriendo en puerto ${PORT}`);
-    });
-}
+// Ruta para servir el archivo index.html
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
 
-// Para Vercel
-module.exports = app;
+// Configurar el puerto
+app.listen(5000, () => {
+    console.log('Servidor en http://localhost:5000');
+});
